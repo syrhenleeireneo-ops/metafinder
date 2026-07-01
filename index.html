@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>COD Mobile Guns</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, Arial, sans-serif;
+        background: #060816;
+        color: #f7f8fc;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at top, #233155 0%, #060816 60%, #03050c 100%);
+      }
+      .app-shell { max-width: 1200px; margin: 0 auto; padding: 24px; }
+      .hero { background: linear-gradient(135deg, rgba(255,129,0,0.2), rgba(122,60,255,0.2)); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; padding: 24px; margin-bottom: 18px; }
+      .eyebrow { text-transform: uppercase; letter-spacing: .3em; color: #ffb347; font-size: .78rem; margin: 0 0 8px; }
+      h1 { margin: 0 0 8px; font-size: clamp(1.5rem, 3vw, 2.3rem); }
+      .hero p { margin: 0; color: #c7d1ea; }
+      .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+      .controls input { width: 100%; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; background: rgba(5,10,27,0.82); color: white; }
+      .filters { display: flex; flex-wrap: wrap; gap: 8px; }
+      .filter-btn { border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.06); color: #e8edff; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+      .filter-btn.active { background: linear-gradient(135deg, #ff8a00, #7a3cff); }
+      .content { display: grid; grid-template-columns: 1.15fr .85fr; gap: 18px; }
+      .card-list { display: grid; gap: 12px; }
+      .weapon-card { display: flex; gap: 14px; align-items: center; width: 100%; border: 1px solid rgba(255,255,255,0.12); background: rgba(9,14,32,0.9); color: inherit; border-radius: 18px; padding: 12px; text-align: left; cursor: pointer; }
+      .weapon-card.active { border-color: #ffb347; transform: translateY(-1px); }
+      .weapon-card img { width: 86px; height: 86px; object-fit: contain; border-radius: 14px; background: rgba(255,255,255,0.06); padding: 8px; }
+      .weapon-card h3 { margin: 0; font-size: 1rem; }
+      .weapon-card p { margin: 4px 0 0; color: #b6c0dc; font-size: .92rem; }
+      .card-category { color: #ffb347; font-size: .76rem; text-transform: uppercase; letter-spacing: .2em; margin: 0 0 3px; }
+      .detail-panel { border: 1px solid rgba(255,255,255,0.12); background: rgba(8,13,30,0.95); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+      .detail-image { display: flex; justify-content: center; align-items: center; border-radius: 18px; padding: 16px; background: linear-gradient(135deg, rgba(255,129,0,0.14), rgba(122,60,255,0.13)); }
+      .detail-image img { width: 100%; max-width: 240px; object-fit: contain; }
+      .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .stat { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 10px; }
+      .stat span { display: block; font-size: .8rem; color: #b6c0dc; }
+      .stat strong { color: white; font-size: 1rem; }
+      .empty { border: 1px solid rgba(255,255,255,0.12); background: rgba(8,13,30,0.95); border-radius: 22px; padding: 18px; text-align: center; }
+      @media (max-width: 900px) { .content { grid-template-columns: 1fr; } }
+      @media (max-width: 640px) { .app-shell { padding: 16px; } .weapon-card { flex-direction: column; align-items: flex-start; } .weapon-card img { width: 100%; height: 100px; } }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <p class="eyebrow">COD Mobile • Weapons</p>
+        <h1>Call of Duty gun info with images</h1>
+        <p>Search for a weapon, browse by category, and see quick stats instantly.</p>
+      </header>
+
+      <section class="controls">
+        <input id="searchInput" type="text" placeholder="Search weapons" />
+        <div id="filters" class="filters"></div>
+      </section>
+
+      <section class="content">
+        <div id="cardList" class="card-list"></div>
+        <aside id="detailPanel" class="detail-panel"></aside>
+      </section>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js';
+      import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js';
+
+      const firebaseConfig = {
+        apiKey: 'AIzaSyBfBaOOIPOGYR9P0PqE9yJKhMwXgh97ibQ',
+        authDomain: 'metafinder-10819.firebaseapp.com',
+        projectId: 'metafinder-10819',
+        storageBucket: 'metafinder-10819.firebasestorage.app',
+        messagingSenderId: '630471409221',
+        appId: '1:630471409221:web:8f6b45bf19b3aa65b6ed2c',
+        measurementId: 'G-XSP5GR56W0',
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const makeGunSvg = (color, accent) => `data:image/svg+xml;utf8,${encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="220" height="120" viewBox="0 0 220 120">
+          <rect width="220" height="120" rx="18" fill="#111827"/>
+          <rect x="24" y="40" width="132" height="24" rx="8" fill="${color}"/>
+          <rect x="156" y="34" width="28" height="36" rx="6" fill="#e5e7eb"/>
+          <rect x="42" y="24" width="86" height="12" rx="5" fill="#374151"/>
+          <rect x="34" y="72" width="92" height="8" rx="4" fill="#4b5563"/>
+          <rect x="96" y="76" width="46" height="10" rx="5" fill="${accent}"/>
+        </svg>
+      `)}`;
+
+      const fallbackGuns = [
+        { id: 'ak47', name: 'AK-47', category: 'Assault Rifle', image: makeGunSvg('#f59e0b', '#fbbf24'), description: 'A hard-hitting rifle that dominates medium-range duels.', damage: '32', range: '90m', fireRate: '600 RPM', accuracy: 'High' },
+        { id: 'm4', name: 'M4', category: 'Assault Rifle', image: makeGunSvg('#60a5fa', '#38bdf8'), description: 'Balanced recoil and strong control make this a reliable all-rounder.', damage: '28', range: '85m', fireRate: '700 RPM', accuracy: 'High' },
+        { id: 'm13', name: 'M13', category: 'Assault Rifle', image: makeGunSvg('#f97316', '#fdba74'), description: 'High fire rate and low recoil.', damage: '26', range: '78m', fireRate: '760 RPM', accuracy: 'High' },
+        { id: 'kilo141', name: 'Kilo 141', category: 'Assault Rifle', image: makeGunSvg('#f59e0b', '#fde68a'), description: 'Excellent all-around assault rifle.', damage: '30', range: '88m', fireRate: '650 RPM', accuracy: 'High' },
+        { id: 'cbr4', name: 'CBR4', category: 'SMG', image: makeGunSvg('#22c55e', '#8b5cf6'), description: 'Reliable SMG for aggressive play.', damage: '19', range: '42m', fireRate: '840 RPM', accuracy: 'Medium' },
+        { id: 'mp5', name: 'MP5', category: 'SMG', image: makeGunSvg('#22c55e', '#86efac'), description: 'Fast handling and tight bursts make this a close-quarters favorite.', damage: '20', range: '45m', fireRate: '800 RPM', accuracy: 'Medium' },
+        { id: 'holger26', name: 'Holger 26', category: 'LMG', image: makeGunSvg('#8b5cf6', '#a78bfa'), description: 'Versatile LMG with strong sustained fire.', damage: '24', range: '70m', fireRate: '750 RPM', accuracy: 'Medium' },
+        { id: 'dlq33', name: 'DL Q33', category: 'Sniper Rifle', image: makeGunSvg('#f43f5e', '#fb7185'), description: 'One of the best sniper rifles.', damage: '115', range: '175m', fireRate: '45 RPM', accuracy: 'Very High' },
+        { id: 'sks', name: 'SKS', category: 'Marksman Rifle', image: makeGunSvg('#14b8a6', '#2dd4bf'), description: 'Powerful marksman rifle with fast follow-up shots.', damage: '60', range: '95m', fireRate: '180 RPM', accuracy: 'High' },
+      ];
+
+      const searchInput = document.getElementById('searchInput');
+      const filters = document.getElementById('filters');
+      const cardList = document.getElementById('cardList');
+      const detailPanel = document.getElementById('detailPanel');
+
+      let guns = fallbackGuns;
+      let activeCategory = 'All';
+      let selectedId = guns[0].id;
+
+      async function loadGuns() {
+        try {
+          const snapshot = await getDocs(collection(db, 'guns'));
+          const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          if (data.length > 0) {
+            guns = data;
+            selectedId = guns[0].id;
+          }
+        } catch (error) {
+          console.error('Failed to load guns:', error);
+        }
+        render();
+      }
+
+      function getFilteredGuns() {
+        const term = searchInput.value.trim().toLowerCase();
+        return guns.filter((gun) => {
+          const matchesCategory = activeCategory === 'All' || gun.category === activeCategory;
+          const matchesSearch = !term || gun.name.toLowerCase().includes(term) || gun.category.toLowerCase().includes(term) || gun.description.toLowerCase().includes(term);
+          return matchesCategory && matchesSearch;
+        });
+      }
+
+      function renderFilters() {
+        const categories = ['All', ...new Set(guns.map((gun) => gun.category))];
+        filters.innerHTML = categories.map((category) => `<button class="filter-btn ${category === activeCategory ? 'active' : ''}" data-category="${category}">${category}</button>`).join('');
+        filters.querySelectorAll('.filter-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            activeCategory = btn.dataset.category;
+            render();
+          });
+        });
+      }
+
+      function renderCards() {
+        const filtered = getFilteredGuns();
+        if (filtered.length === 0) {
+          cardList.innerHTML = `<div class="empty"><h3>No weapons found</h3><p>Try another search term or category.</p></div>`;
+          return;
+        }
+        cardList.innerHTML = filtered.map((gun) => `
+          <button class="weapon-card ${gun.id === selectedId ? 'active' : ''}" data-id="${gun.id}">
+            <img src="${gun.image || makeGunSvg('#f59e0b', '#fbbf24')}" alt="${gun.name}">
+            <div>
+              <p class="card-category">${gun.category}</p>
+              <h3>${gun.name}</h3>
+              <p>${gun.description}</p>
+            </div>
+          </button>
+        `).join('');
+        cardList.querySelectorAll('.weapon-card').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            selectedId = btn.dataset.id;
+            render();
+          });
+        });
+      }
+
+      function renderDetail() {
+        const selectedGun = getFilteredGuns().find((gun) => gun.id === selectedId) || guns.find((gun) => gun.id === selectedId) || guns[0];
+        detailPanel.innerHTML = `
+          <div class="detail-image"><img src="${selectedGun.image || makeGunSvg('#f59e0b', '#fbbf24')}" alt="${selectedGun.name}"></div>
+          <div>
+            <p class="eyebrow">Featured weapon</p>
+            <h2>${selectedGun.name}</h2>
+            <p>${selectedGun.description}</p>
+            <div class="stats">
+              <div class="stat"><span>Damage</span><strong>${selectedGun.damage}</strong></div>
+              <div class="stat"><span>Range</span><strong>${selectedGun.range}</strong></div>
+              <div class="stat"><span>Fire Rate</span><strong>${selectedGun.fireRate}</strong></div>
+              <div class="stat"><span>Accuracy</span><strong>${selectedGun.accuracy}</strong></div>
+            </div>
+          </div>
+        `;
+      }
+
+      function render() {
+        renderFilters();
+        renderCards();
+        renderDetail();
+      }
+
+      searchInput.addEventListener('input', render);
+      loadGuns();
+    </script>
+  </body>
+</html>
