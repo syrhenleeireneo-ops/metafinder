@@ -115,17 +115,35 @@
       let activeCategory = 'All';
       let selectedId = guns[0].id;
 
-      async function loadGuns() {
+      async function loadGuns(searchText = '') {
+        const term = searchText.trim().toLowerCase();
+
         try {
           const snapshot = await getDocs(collection(db, 'guns'));
-          const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+          if (term) {
+            data = data.filter((gun) => {
+              const name = (gun.name || '').toLowerCase();
+              const category = (gun.category || '').toLowerCase();
+              const description = (gun.description || '').toLowerCase();
+              return name.includes(term) || category.includes(term) || description.includes(term);
+            });
+          }
+
           if (data.length > 0) {
             guns = data;
+            selectedId = guns[0].id;
+          } else {
+            guns = fallbackGuns;
             selectedId = guns[0].id;
           }
         } catch (error) {
           console.error('Failed to load guns:', error);
+          guns = fallbackGuns;
+          selectedId = guns[0].id;
         }
+
         render();
       }
 
@@ -197,8 +215,11 @@
         renderDetail();
       }
 
-      searchInput.addEventListener('input', render);
+      searchInput.addEventListener('input', (event) => {
+        loadGuns(event.target.value);
+      });
       loadGuns();
     </script>
   </body>
 </html>
+
