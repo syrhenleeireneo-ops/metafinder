@@ -23,7 +23,9 @@
       h1 { margin: 0 0 8px; font-size: clamp(1.5rem, 3vw, 2.3rem); }
       .hero p { margin: 0; color: #c7d1ea; }
       .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
-      .controls input { width: 100%; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; background: rgba(5,10,27,0.82); color: white; }
+      .search-row { display: flex; gap: 10px; }
+      .search-row input { flex: 1; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; background: rgba(5,10,27,0.82); color: white; }
+      .save-btn { border: none; border-radius: 999px; padding: 10px 14px; background: linear-gradient(135deg, #ff8a00, #7a3cff); color: white; cursor: pointer; }
       .filters { display: flex; flex-wrap: wrap; gap: 8px; }
       .filter-btn { border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.06); color: #e8edff; border-radius: 999px; padding: 8px 14px; cursor: pointer; }
       .filter-btn.active { background: linear-gradient(135deg, #ff8a00, #7a3cff); }
@@ -58,7 +60,10 @@
       </header>
 
       <section class="controls">
-        <input id="searchInput" type="text" placeholder="Search weapons" />
+        <div class="search-row">
+          <input id="searchInput" type="text" placeholder="Search weapons" />
+          <button id="saveBtn" class="save-btn" type="button">Save</button>
+        </div>
         <div id="filters" class="filters"></div>
       </section>
 
@@ -112,11 +117,13 @@
       ];
 
       const searchInput = document.getElementById('searchInput');
+      const saveBtn = document.getElementById('saveBtn');
       const filters = document.getElementById('filters');
       const cardList = document.getElementById('cardList');
       const detailPanel = document.getElementById('detailPanel');
 
       let guns = fallbackGuns;
+      let savedGuns = [];
       let activeCategory = 'All';
       let selectedId = guns[0].id;
 
@@ -196,6 +203,27 @@
         });
       }
 
+      function saveCurrentWeapon() {
+        const term = searchInput.value.trim();
+        if (!term) return;
+
+        const match = guns.find((gun) => {
+          const name = (gun.name || '').toLowerCase();
+          const category = (gun.category || '').toLowerCase();
+          const description = (gun.description || '').toLowerCase();
+          return name.includes(term.toLowerCase()) || category.includes(term.toLowerCase()) || description.includes(term.toLowerCase());
+        });
+
+        if (!match) return;
+
+        if (!savedGuns.some((item) => item.id === match.id)) {
+          savedGuns = [match, ...savedGuns];
+        }
+
+        selectedId = match.id;
+        render();
+      }
+
       function renderDetail() {
         const selectedGun = getFilteredGuns().find((gun) => gun.id === selectedId) || guns.find((gun) => gun.id === selectedId) || guns[0];
         detailPanel.innerHTML = `
@@ -220,6 +248,7 @@
         renderDetail();
       }
 
+      saveBtn.addEventListener('click', saveCurrentWeapon);
       searchInput.addEventListener('input', (event) => {
         loadGuns(event.target.value);
       });
